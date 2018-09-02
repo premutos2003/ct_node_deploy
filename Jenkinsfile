@@ -63,6 +63,7 @@ cd ..
     mv ${PROJECT_NAME}.tar.gz ./ct_node_mongo/infrastructure
     docker rmi ${PROJECT_NAME}
     aws s3 cp ${PROJECT_NAME}.tar.gz s3://app-state-${STACK}-${PROJECT_NAME}/state/0.${EXECUTOR_NUMBER} --region ${REGION}
+    ls
     '''
     }
 }
