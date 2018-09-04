@@ -8,7 +8,7 @@ node {
                 sh 'git clone ${GIT_URL} app'
                 sh 'echo cloning app to workspace'
                 script {
-                    def get = new URL("host.docker.internal:3000/app_infra?id=${PROJECT_NAME}-${ENV}").openConnection();
+                    def get = new URL("http://host.docker.internal:3000/app_infra?id=${PROJECT_NAME}-${ENV}").openConnection();
                     def res = []
                     res =(get.getInputStream().getText());
                     res = slurper.parseText(res);
