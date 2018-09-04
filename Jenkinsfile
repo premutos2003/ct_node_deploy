@@ -69,9 +69,11 @@ cd ..
 
 stage("Provision Artefact on Instance"){
             sh '''
+                echo $entrypoint
                 url=host.docker.internal:3000/app_infra?id=${PROJECT_NAME}-${ENV}
                 str=$(curl -v -sS $url| jq -r '.[0]')
                 app_instance_ip=$(echo $str | jq -r '.app_instance_ip')
+                region=$(echo $str | jq -r '.region')
                 infra=$(curl -v -sS 'host.docker.internal:3000/infra?id=${ENV}' | jq -r '.[0]')
 
                 aws s3 cp s3://${STACK}-${PROJECT_NAME}-${ENV}-secrets/base_${PROJECT_NAME}_${STACK}_${ENV}_ssh_private_key_encrypted .
@@ -79,7 +81,7 @@ stage("Provision Artefact on Instance"){
 
                 ssh -i key.pem ec2-user@$app_instance_ip  bash <<
                 "EOF"
-                aws s3 cp s3://app-state-${STACK}-${PROJECT_NAME}/${STACK}-${PROJECT_NAME}/0.${EXECUTOR_NUMBER} --region ${REGION}
+                aws s3 cp s3://app-state-${STACK}-${PROJECT_NAME}/${STACK}-${PROJECT_NAME}/0.${EXECUTOR_NUMBER} --region ${region}
                 sudo docker stop <container-name>
                 sudo docker load < ./0.${EXECUTOR_NUMBER}
                 docker-compose up -d
