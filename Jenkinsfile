@@ -7,20 +7,15 @@ node {
                 deleteDir()
                 sh 'git clone ${GIT_URL} app'
                 sh 'echo cloning app to workspace'
-                script {
-                    def get = new URL("http://host.docker.internal:3000/app_infra?id=${PROJECT_NAME}-${ENV}").openConnection();
-                    def res = []
-                    res =(get.getInputStream().getText());
-                    res = slurper.parseText(res);
-                    region = res.region;
-                    app_instance_ip = res.app_instance_ip
-                }
             }
     stage("Clone infrastructure config to workspace") {
         sh 'git clone https://github.com/premutos2003/ct_node_mongo.git'
     }
     stage("Build Docker image/artifact") {
         sh '''#!/bin/bash -xe
+        url=host.docker.internal:3000/app_infra?id=${PROJECT_NAME}-${ENV}
+                        str=$(curl -v -sS $url| jq -r '.[0]')
+                        region=$(echo $str | jq -r '.region')
     mv ./ct_node_mongo/Dockerfile ./
     mv ./ct_node_mongo/infrastructure/docker-compose.yml ./
     cd app
@@ -77,7 +72,10 @@ cd ..
 
 stage("Provision Artefact on Instance"){
             sh '''
-
+                url=host.docker.internal:3000/app_infra?id=${PROJECT_NAME}-${ENV}
+                str=$(curl -v -sS $url| jq -r '.[0]')
+                app_instance_ip=$(echo $str | jq -r '.app_instance_ip')
+                region=$(echo $str | jq -r '.region')
                 infra=$(curl -v -sS 'host.docker.internal:3000/infra?id=${ENV}' | jq -r '.[0]')
 
                 aws s3 cp s3://${STACK}-${PROJECT_NAME}-${ENV}-secrets/base_${PROJECT_NAME}_${STACK}_${ENV}_ssh_private_key_encrypted .
