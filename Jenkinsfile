@@ -62,8 +62,28 @@ cd ..
     ls
     mv ${PROJECT_NAME}.tar.gz ./ct_node_mongo/infrastructure
     docker rmi ${PROJECT_NAME}
-    aws s3 cp ${PROJECT_NAME}.tar.gz s3://app-state-${STACK}-${PROJECT_NAME}/state/0.${EXECUTOR_NUMBER} --region ${REGION}
+    aws s3 cp ${PROJECT_NAME}.tar.gz s3://app-state-${STACK}-${PROJECT_NAME}/${STACK}-${PROJECT_NAME}/0.${EXECUTOR_NUMBER} --region ${REGION}
 
     '''
+    }
+
+stage("Provision Artefact on Instance"){
+            sh '''
+                url=host.docker.internal:3000/app_infra?id=${PROJECT_NAME}-${ENV}
+                str=$(curl -v -sS $url| jq -r '.[0]')
+                app_instance_ip=$(echo $str | jq -r '.app_instance_ip')
+                infra=$(curl -v -sS 'host.docker.internal:3000/infra?id=${ENV}' | jq -r '.[0]')
+
+                aws s3 cp s3://${STACK}-${PROJECT_NAME}-${ENV}-secrets/base_${PROJECT_NAME}_${STACK}_${ENV}_ssh_private_key_encrypted .
+                aws kms decrypt --ciphertext-blob fileb://base_${PROJECT_NAME}_${STACK}_${ENV}_ssh_private_key_encrypted --output text --query Plaintext | base64 --decode > key.pem
+
+                ssh -i key.pem ec2-user@$app_instance_ip  bash <<
+                "EOF"
+                aws s3 cp s3://app-state-${STACK}-${PROJECT_NAME}/${STACK}-${PROJECT_NAME}/0.${EXECUTOR_NUMBER} --region ${REGION}
+                sudo docker stop <container-name>
+                sudo docker load < ./0.${EXECUTOR_NUMBER}
+                docker-compose up -d
+                EOF
+            '''
     }
 }
